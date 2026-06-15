@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Poomsae Scoring System (Landscape)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+        /* 关键修复：禁止双击缩放 */
+        body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: #e6f2ff;
+            text-align: center;
+            position: relative;
+            touch-action: manipulation;  /* 禁用双击缩放 */
+            -webkit-tap-highlight-color: transparent;
+        }
+        .rotate-tip {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            color: #fff;
+            font-size: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        @media (orientation: landscape) {
+            .rotate-tip { display: none; }
+        }
+        
+        .watermark {
+            position: fixed;
+            bottom: 12px;
+            right: 16px;
+            font-size: 16px;
+            font-weight: bold;
+            color: rgba(0, 0, 0, 0.15);
+            z-index: 999;
+            pointer-events: none;
+            font-family: monospace;
+        }
+
+        .version {
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            font-size: 14px;
+            font-weight: bold;
+            color: #2c3e66;
+            background: rgba(255,255,255,0.6);
+            padding: 4px 10px;
+            border-radius: 20px;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .top-page {
+            display: none;
+            width: 100%;
+            height: 100vh;
+            padding: 10px 12px 45px 12px;
+            flex-direction: column;
+            justify-content: flex-start;
+            overflow-y: auto;
+            position: relative;
+        }
+        .top-page.active {
+            display: flex;
+        }
+
+        .sub-page {
+            display: none;
+            width: 100%;
+            flex: 1;
+        }
+        .sub-page.active {
+            display: block;
+        }
+
+        #homePage {
+            justify-content: center;
+            align-items: center;
+            gap: 25px;
+        }
+        #homePage h1 {
+            font-size: 30px;
+            margin-bottom: 8px;
+        }
+        .mode-btn {
+            background: #2b78e4;
+            color: #fff;
+            border: none;
+            padding: 12px 35px;
+            border-radius: 35px;
+            font-size: 22px;
+            cursor: pointer;
+            min-width: 240px;
+            touch-action: manipulation;
+        }
+        .mode-btn:active {
+            background: #1a68d1;
+        }
+
+        .title {
+            font-size: 22px;
+            margin: 6px 0;
+            font-weight: bold;
+        }
+        .score-big {
+            font-size: 52px;
+            margin: 4px 0;
+            font-weight: bold;
+            background: white;
+            border-radius: 28px;
+            padding: 2px;
+        }
+        /* 单人模式 Accuracy 标签：橙色放大 */
+        .acc-small-label {
+            font-size: 18px;
+            color: #e67e22;
+            margin-top: 6px;
+            margin-bottom: -4px;
+            letter-spacing: 1px;
+            font-weight: bold;
+        }
+        .double-acc-label {
+            font-size: 18px;
+            color: #e67e22;
+            margin: 6px 0 2px 0;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+        
+        .total-score {
+            font-size: 52px;
+            font-weight: bold;
+            margin: 6px 0;
+        }
+        #singleTotalScore { color: #d83030; }
+        .blue-box .total-score { color: #2b78e4; }
+        .red-box .total-score { color: #d83030; }
+
+        .score-details {
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .winner-effect {
+            animation: winBlink 0.8s infinite alternate;
+        }
+        @keyframes winBlink {
+            0% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0.3; transform: scale(1.02); }
+        }
+
+        .left-meta-zone {
+            text-align: left;
+            font-size: 14px;
+            margin: 4px 0 8px 0;
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            gap: 8px;
+            background: #ffffffcc;
+            padding: 4px 10px;
+            border-radius: 25px;
+        }
+        .left-meta-zone select, .left-meta-zone input {
+            padding: 3px 6px;
+            font-size: 13px;
+            border-radius: 18px;
+        }
+        .left-meta-zone input {
+            width: 110px;
+        }
+
+        .btn-main {
+            background: #2b78e4;
+            color: white;
+            padding: 6px 14px;
+            font-size: 16px;
+            margin: 4px;
+            min-width: 80px;
+            border: none;
+            border-radius: 35px;
+            font-weight: bold;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+        .btn-small {
+            background: #5a9cf0;
+            color: white;
+            padding: 5px 10px;
+            font-size: 14px;
+            margin: 3px;
+            border: none;
+            border-radius: 35px;
+            font-weight: bold;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+        .btn-long {
+            background: #2b78e4;
+            color: white;
+            padding: 8px 18px;
+            font-size: 16px;
+            width: auto;
+            min-width: 150px;
+            margin: 6px auto;
+            border: none;
+            border-radius: 35px;
+            font-weight: bold;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+        .btn-main:active, .btn-small:active, .btn-long:active {
+            transform: scale(0.96);
+            filter: brightness(0.9);
+        }
+
+        /* 单人负按钮 */
+        .negative-btn-container {
+            display: flex;
+            justify-content: space-between;
+            gap: 25px;
+            margin: 8px 15px;
+        }
+        .btn-negative-big {
+            background: #2b78e4;
+            color: white;
+            border: none;
+            padding: 16px 0;
+            font-size: 36px;
+            font-weight: bold;
+            border-radius: 50px;
+            width: 45%;
+            cursor: pointer;
+            text-align: center;
+            touch-action: manipulation;
+        }
+        .btn-positive-medium {
+            background: #5a9cf0;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 22px;
+            font-weight: bold;
+            border-radius: 45px;
+            cursor: pointer;
+            min-width: 100px;
+            touch-action: manipulation;
+        }
+        .btn-submit-green {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+            padding: 10px 28px;
+            font-size: 20px;
+            border-radius: 45px;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 10px auto;
+            display: inline-block;
+            touch-action: manipulation;
+        }
+
+        /* 双人模式按钮 */
+        .double-acc-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin: 8px 0;
+        }
+        .double-negative-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            margin: 0 8px;
+        }
+        .btn-double-negative {
+            background: #1a68d1;
+            color: white;
+            border: none;
+            width: 48%;
+            padding: 14px 0;
+            font-size: 34px;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            text-align: center;
+            touch-action: manipulation;
+        }
+        .red-box .btn-double-negative {
+            background: #b91c1c;
+        }
+        .double-positive-row {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 4px 0;
+        }
+        .btn-double-positive {
+            background: #5a9cf0;
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            font-size: 24px;
+            font-weight: bold;
+            border-radius: 45px;
+            cursor: pointer;
+            min-width: 110px;
+            touch-action: manipulation;
+        }
+        .red-box .btn-double-positive {
+            background: #e65c5c;
+        }
+        .btn-double-negative:active, .btn-double-positive:active {
+            transform: scale(0.95);
+        }
+
+        /* 双人滑块行 */
+        .double-slider-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: white;
+            margin: 4px 2px;
+            padding: 2px 8px;
+            border-radius: 30px;
+            gap: 4px;
+        }
+        .double-slider-row span {
+            width: 120px;
+            font-size: 13px;
+            font-weight: bold;
+            text-align: left;
+        }
+        .double-slider-row input[type="range"] {
+            flex: 2;
+            min-width: 80px;
+            height: 5px;
+        }
+        .double-slider-row .slider-val {
+            width: 45px;
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .double-container {
+            display: flex;
+            flex-direction: row;
+            gap: 8px;
+            width: 100%;
+            flex: 1;
+            min-height: 0;
+        }
+        .side-box {
+            flex: 1;
+            background: white;
+            border-radius: 20px;
+            padding: 6px 4px;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            max-height: 100%;
+        }
+        .blue-box { border-top: 3px solid #2b78e4; background: #f6faff; }
+        .red-box { border-top: 3px solid #d83030; background: #fffafa; }
+        .side-title {
+            font-size: 28px;
+            font-weight: bold;
+            margin: 2px 0 4px 0;
+        }
+        .blue-box .side-title { color: #1e5abf; }
+        .red-box .side-title { color: #b91c1c; }
+
+        .double-center-action {
+            position: fixed;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 99;
+            background: transparent;
+        }
+        .btn-center-submit {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+            padding: 6px 28px;
+            font-size: 18px;
+            border-radius: 35px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+            touch-action: manipulation;
+        }
+        .btn-center-submit:active {
+            transform: scale(0.95);
+        }
+
+        .deduction-stats {
+            background: #f9f2e0;
+            border-radius: 18px;
+            padding: 6px 12px;
+            margin: 8px auto;
+            width: 90%;
+            font-size: 14px;
+            font-weight: bold;
+            color: #b95f0e;
+            border: 1px solid #e0c890;
+            text-align: center;
+            font-family: monospace;
+        }
+
+        .record-small {
+            background: #dee7f5;
+            border-radius: 18px;
+            padding: 3px 10px;
+            font-size: 11px;
+            margin-top: 6px;
+            display: inline-block;
+        }
+
+        .nav-home, .nav-back {
+            position: fixed;
+            top: 6px;
+            padding: 5px 12px;
+            font-size: 13px;
+            border-radius: 25px;
+            z-index: 1000;
+            background: #334155;
+            color: white;
+            border: none;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+        .nav-home { left: 6px; }
+        .nav-back { right: 6px; }
+
+        @media (orientation: landscape) and (max-height: 500px) {
+            .score-big { font-size: 42px; }
+            .total-score { font-size: 40px; }
+            .btn-double-negative { font-size: 28px; padding: 10px 0; }
+            .btn-double-positive { font-size: 20px; padding: 6px 18px; }
+            .side-title { font-size: 24px; }
+            .double-acc-label { font-size: 16px; }
+            .acc-small-label { font-size: 16px; }
+            .double-slider-row span { width: 100px; font-size: 11px; }
+            .double-slider-row .slider-val { font-size: 16px; }
+            .deduction-stats { font-size: 12px; padding: 4px 8px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="rotate-tip">Please rotate your device to landscape mode</div>
+    <div class="watermark">TKD Nobody</div>
+
+    <div class="top-page active" id="homePage">
+        <div class="version">Version 1.0</div>
+        <h1>Select Scoring Mode</h1>
+        <button class="mode-btn" onclick="openSingle()">One by One</button>
+        <button class="mode-btn" onclick="openDouble()">Side by Side</button>
+    </div>
+
+    <!-- 单人模块 -->
+    <div class="top-page" id="singleModulePage">
+        <button class="nav-home" onclick="backToHome()">🏠 Home</button>
+        <button class="nav-back" onclick="singleBackClick()">↩️ Back</button>
+
+        <div class="sub-page active" id="singleAccPage">
+            <div class="left-meta-zone">
+                <div>Judge No.: 
+                    <select id="singleJudge">
+                        <option>1</option><option>2</option><option>3</option>
+                        <option>4</option><option>5</option><option>6</option><option>7</option>
+                    </select>
+                </div>
+                <div>Division: <input type="text" id="singleGroup" placeholder="Enter Division"></div>
+            </div>
+            <div class="acc-small-label">Accuracy</div>
+            <div class="score-big" id="singleAccScore">4.0</div>
+            <div class="negative-btn-container">
+                <button class="btn-negative-big" onclick="singleAccChange(-0.3)">-0.3</button>
+                <button class="btn-negative-big" onclick="singleAccChange(-0.1)">-0.1</button>
+            </div>
+            <div style="display: flex; justify-content: center; gap: 20px; margin: 8px 0;">
+                <button class="btn-positive-medium" onclick="singleAccChange(+0.3)">+0.3</button>
+                <button class="btn-positive-medium" onclick="singleAccChange(+0.1)">+0.1</button>
+            </div>
+            <div style="text-align:center; margin: 8px 0;">
+                <button class="btn-small" style="background:#5a6b7a;" onclick="singleAccRestart()">restart</button>
+                <button class="btn-submit-green" onclick="toSingleExp()">Submit</button>
+            </div>
+        </div>
+
+        <div class="sub-page" id="singleExpPage">
+            <div class="title">Presentation</div>
+            <div class="slider-row" style="display: flex; align-items: center; justify-content: space-between; background: white; margin: 6px 4px; padding: 4px 12px; border-radius: 40px;">
+                <span style="width: 100px;">Power & Speed</span>
+                <button class="btn-small" onclick="singleSliderChange(0, -0.1)">-</button>
+                <input type="range" min="0" max="20" value="0" step="1" id="s1" oninput="singleCalcSlider(0)">
+                <span class="slider-val" id="v1" style="width: 40px; font-size: 18px;">0.0</span>
+                <button class="btn-small" onclick="singleSliderChange(0, +0.1)">+</button>
+            </div>
+            <div class="slider-row" style="display: flex; align-items: center; justify-content: space-between; background: white; margin: 6px 4px; padding: 4px 12px; border-radius: 40px;">
+                <span style="width: 100px;">Rhythm</span>
+                <button class="btn-small" onclick="singleSliderChange(1, -0.1)">-</button>
+                <input type="range" min="0" max="20" value="0" step="1" id="s2" oninput="singleCalcSlider(1)">
+                <span class="slider-val" id="v2" style="width: 40px; font-size: 18px;">0.0</span>
+                <button class="btn-small" onclick="singleSliderChange(1, +0.1)">+</button>
+            </div>
+            <div class="slider-row" style="display: flex; align-items: center; justify-content: space-between; background: white; margin: 6px 4px; padding: 4px 12px; border-radius: 40px;">
+                <span style="width: 100px;">Energy</span>
+                <button class="btn-small" onclick="singleSliderChange(2, -0.1)">-</button>
+                <input type="range" min="0" max="20" value="0" step="1" id="s3" oninput="singleCalcSlider(2)">
+                <span class="slider-val" id="v3" style="width: 40px; font-size: 18px;">0.0</span>
+                <button class="btn-small" onclick="singleSliderChange(2, +0.1)">+</button>
+            </div>
+            <div class="score-big" id="singleExpScore">0.0</div>
+            <div style="text-align:center;">
+                <button class="btn-submit-green" onclick="toSingleTotal()">Submit</button>
+            </div>
+        </div>
+
+        <div class="sub-page" id="singleTotalPage">
+            <div class="title">Final Score</div>
+            <div class="total-score" id="singleTotalScore">0.00</div>
+            <div class="score-details" id="singleTotalDetails">Accuracy: 0.0 | Presentation: 0.0</div>
+            <div class="deduction-stats" id="singleDeductionStats">Accuracy: -0.1×0, -0.3×0</div>
+            <div style="text-align:center;">
+                <button class="btn-long" onclick="resetSingleAll()">Score Again</button>
+            </div>
+            <div class="record-small">✅ Saved</div>
+        </div>
+    </div>
+
+    <!-- 双人模块 -->
+    <div class="top-page" id="doubleMainPage">
+        <button class="nav-home" onclick="backToHome()">🏠 Home</button>
+        <button class="nav-back" onclick="doubleBackClick()">↩️ Back</button>
+
+        <div class="double-container">
+            <div class="double-center-action">
+                <button class="btn-center-submit" id="centerAccBtn" onclick="syncSubmitAcc()">Submit</button>
+                <button class="btn-center-submit" id="centerExpBtn" style="display:none;" onclick="syncSubmitExpToTotal()">Submit</button>
+                <button class="btn-center-submit" id="centerResetBtn" style="display:none; background: linear-gradient(135deg, #6b7280, #4b5563);" onclick="resetDoubleAllModes()">Next Match</button>
+            </div>
+
+            <div class="side-box blue-box">
+                <div class="side-title">Chung</div>
+                <div class="sub-page active" id="blueAccPage">
+                    <div class="left-meta-zone">
+                        <div>Judge: <select id="blueJudge"><option>1</option><option>2</option><option>3</option></select></div>
+                        <div>Div.: <input type="text" id="blueGroup" placeholder="Chung Div."></div>
+                    </div>
+                    <div class="double-acc-label">Accuracy</div>
+                    <div class="score-big" id="blueAccScore">4.0</div>
+                    <div class="double-acc-container">
+                        <div class="double-negative-row">
+                            <button class="btn-double-negative" onclick="blueAccChange(-0.1)">-0.1</button>
+                            <button class="btn-double-negative" onclick="blueAccChange(-0.3)">-0.3</button>
+                        </div>
+                        <div class="double-positive-row">
+                            <button class="btn-double-positive" onclick="blueAccChange(+0.1)">+0.1</button>
+                            <button class="btn-double-positive" onclick="blueAccChange(+0.3)">+0.3</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="sub-page" id="blueExpPage">
+                    <div class="double-slider-row"><span>Speed & Power</span><button class="btn-small" onclick="blueSliderChange(0, -0.1)">-</button><input type="range" min="0" max="20" value="0" step="1" id="b_s1" oninput="blueCalcSlider(0)"><span class="slider-val" id="b_v1">0.0</span><button class="btn-small" onclick="blueSliderChange(0, +0.1)">+</button></div>
+                    <div class="double-slider-row"><span>Rhythm & Tempo</span><button class="btn-small" onclick="blueSliderChange(1, -0.1)">-</button><input type="range" min="0" max="20" value="0" step="1" id="b_s2" oninput="blueCalcSlider(1)"><span class="slider-val" id="b_v2">0.0</span><button class="btn-small" onclick="blueSliderChange(1, +0.1)">+</button></div>
+                    <div class="double-slider-row"><span>Energy</span><button class="btn-small" onclick="blueSliderChange(2, -0.1)">-</button><input type="range" min="0" max="20" value="0" step="1" id="b_s3" oninput="blueCalcSlider(2)"><span class="slider-val" id="b_v3">0.0</span><button class="btn-small" onclick="blueSliderChange(2, +0.1)">+</button></div>
+                    <div class="score-big" id="blueExpScore">0.0</div>
+                </div>
+                <div class="sub-page" id="blueTotalPage">
+                    <div class="title">Final Score</div>
+                    <div class="total-score" id="blueTotalScore">0.00</div>
+                    <div class="score-details" id="blueTotalDetails">Accuracy: 0.0 | Presentation: 0.0</div>
+                    <div class="deduction-stats" id="blueDeductionStats">Accuracy: -0.1×0, -0.3×0</div>
+                    <div class="record-small">✅ Saved</div>
+                </div>
+            </div>
+
+            <div class="side-box red-box">
+                <div class="side-title">Hong</div>
+                <div class="sub-page active" id="redAccPage">
+                    <div class="left-meta-zone">
+                        <div>Judge: <select id="redJudge"><option>1</option><option>2</option><option>3</option></select></div>
+                        <div>Div.: <input type="text" id="redGroup" placeholder="Hong Div."></div>
+                    </div>
+                    <div class="double-acc-label">Accuracy</div>
+                    <div class="score-big" id="redAccScore">4.0</div>
+                    <div class="double-acc-container">
+                        <div class="double-negative-row">
+                            <button class="btn-double-negative" onclick="redAccChange(-0.3)">-0.3</button>
+                            <button class="btn-double-negative" onclick="redAccChange(-0.1)">-0.1</button>
+                        </div>
+                        <div class="double-positive-row">
+                            <button class="btn-double-positive" onclick="redAccChange(+0.3)">+0.3</button>
+                            <button class="btn-double-positive" onclick="redAccChange(+0.1)">+0.1</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="sub-page" id="redExpPage">
+                    <div class="double-slider-row"><span>Speed & Power</span><button class="btn-small" onclick="redSliderChange(0, -0.1)">-</button><input type="range" min="0" max="20" value="0" step="1" id="r_s1" oninput="redCalcSlider(0)"><span class="slider-val" id="r_v1">0.0</span><button class="btn-small" onclick="redSliderChange(0, +0.1)">+</button></div>
+                    <div class="double-slider-row"><span>Rhythm & Tempo</span><button class="btn-small" onclick="redSliderChange(1, -0.1)">-</button><input type="range" min="0" max="20" value="0" step="1" id="r_s2" oninput="redCalcSlider(1)"><span class="slider-val" id="r_v2">0.0</span><button class="btn-small" onclick="redSliderChange(1, +0.1)">+</button></div>
+                    <div class="double-slider-row"><span>Energy</span><button class="btn-small" onclick="redSliderChange(2, -0.1)">-</button><input type="range" min="0" max="20" value="0" step="1" id="r_s3" oninput="redCalcSlider(2)"><span class="slider-val" id="r_v3">0.0</span><button class="btn-small" onclick="redSliderChange(2, +0.1)">+</button></div>
+                    <div class="score-big" id="redExpScore">0.0</div>
+                </div>
+                <div class="sub-page" id="redTotalPage">
+                    <div class="title">Final Score</div>
+                    <div class="total-score" id="redTotalScore">0.00</div>
+                    <div class="score-details" id="redTotalDetails">Accuracy: 0.0 | Presentation: 0.0</div>
+                    <div class="deduction-stats" id="redDeductionStats">Accuracy: -0.1×0, -0.3×0</div>
+                    <div class="record-small">✅ Saved</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    const MAX_ITEM = 2.0;
+    
+    let s_step = 1;
+    let d_step = 1;
+
+    function hideAllTopPages() {
+        document.querySelectorAll('.top-page').forEach(el => el.classList.remove('active'));
+    }
+
+    function backToHome() {
+        hideAllTopPages();
+        document.getElementById('homePage').classList.add('active');
+    }
+
+    function openSingle() {
+        hideAllTopPages();
+        document.getElementById('singleModulePage').classList.add('active');
+        resetSingleAll();
+    }
+
+    function openDouble() {
+        hideAllTopPages();
+        document.getElementById('doubleMainPage').classList.add('active');
+        resetBlueAll();
+        resetRedAll();
+        d_step = 1;
+        switchDoubleStep();
+    }
+
+    function singleBackClick() {
+        if (s_step === 2) {
+            s_step = 1;
+            switchSingleStep();
+        } else if (s_step === 3) {
+            s_step = 2;
+            switchSingleStep();
+        } else {
+            backToHome();
+        }
+    }
+
+    function doubleBackClick() {
+        if (d_step === 2) {
+            d_step = 1;
+            switchDoubleStep();
+        } else if (d_step === 3) {
+            d_step = 2;
+            switchDoubleStep();
+        } else {
+            backToHome();
+        }
+    }
+
+    function switchSingleStep() {
+        document.querySelectorAll('#singleModulePage .sub-page').forEach(el => el.classList.remove('active'));
+        if(s_step === 1) document.getElementById('singleAccPage').classList.add('active');
+        if(s_step === 2) document.getElementById('singleExpPage').classList.add('active');
+        if(s_step === 3) document.getElementById('singleTotalPage').classList.add('active');
+    }
+
+    function switchDoubleStep() {
+        document.querySelectorAll('.blue-box .sub-page').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.red-box .sub-page').forEach(el => el.classList.remove('active'));
+        
+        document.getElementById('centerAccBtn').style.display = 'none';
+        document.getElementById('centerExpBtn').style.display = 'none';
+        document.getElementById('centerResetBtn').style.display = 'none';
+
+        if(d_step === 1) {
+            document.getElementById('blueAccPage').classList.add('active');
+            document.getElementById('redAccPage').classList.add('active');
+            document.getElementById('centerAccBtn').style.display = 'block';
+        }
+        if(d_step === 2) {
+            document.getElementById('blueExpPage').classList.add('active');
+            document.getElementById('redExpPage').classList.add('active');
+            document.getElementById('centerExpBtn').style.display = 'block';
+        }
+        if(d_step === 3) {
+            document.getElementById('blueTotalPage').classList.add('active');
+            document.getElementById('redTotalPage').classList.add('active');
+            document.getElementById('centerResetBtn').style.display = 'block';
+            updateBlueDeductionStats();
+            updateRedDeductionStats();
+        }
+    }
+
+    function syncSubmitAcc() {
+        d_step = 2;
+        switchDoubleStep();
+    }
+
+    function syncSubmitExpToTotal() {
+        d_step = 3;
+        switchDoubleStep();
+        
+        let b_total = Number((b_acc + b_exp).toFixed(1));
+        let r_total = Number((r_acc + r_exp).toFixed(1));
+        
+        document.getElementById('blueTotalScore').innerText = b_total.toFixed(2);
+        document.getElementById('blueTotalDetails').innerText = `Accuracy: ${b_acc.toFixed(1)} | Presentation: ${b_exp.toFixed(1)}`;
+        
+        document.getElementById('redTotalScore').innerText = r_total.toFixed(2);
+        document.getElementById('redTotalDetails').innerText = `Accuracy: ${r_acc.toFixed(1)} | Presentation: ${r_exp.toFixed(1)}`;
+        
+        compareDoubleScores(b_total, r_total);
+        updateBlueDeductionStats();
+        updateRedDeductionStats();
+    }
+
+    function resetDoubleAllModes() {
+        resetBlueAll();
+        resetRedAll();
+        d_step = 1;
+        switchDoubleStep();
+        updateBlueDeductionStats();
+        updateRedDeductionStats();
+    }
+
+    function compareDoubleScores(blueTotal, redTotal) {
+        const blueEl = document.getElementById('blueTotalScore');
+        const redEl = document.getElementById('redTotalScore');
+        
+        blueEl.classList.remove('winner-effect');
+        redEl.classList.remove('winner-effect');
+        
+        if (blueTotal > redTotal) {
+            blueEl.classList.add('winner-effect');
+        } else if (redTotal > blueTotal) {
+            redEl.classList.add('winner-effect');
+        }
+    }
+
+    // 蓝方扣除统计
+    function updateBlueDeductionStats() {
+        const statsDiv = document.getElementById('blueDeductionStats');
+        if (statsDiv) {
+            statsDiv.innerText = `Accuracy: -0.1×${blue_01_count}, -0.3×${blue_03_count}`;
+        }
+    }
+    function updateRedDeductionStats() {
+        const statsDiv = document.getElementById('redDeductionStats');
+        if (statsDiv) {
+            statsDiv.innerText = `Accuracy: -0.1×${red_01_count}, -0.3×${red_03_count}`;
+        }
+    }
+
+    // 单人模式变量
+    let s_acc = 4.0, s_slide = [0,0,0], s_exp = 0.0;
+    let s_01_count = 0, s_03_count = 0, s_restart_count = 0;
+
+    function updateSingleDeductionStats() {
+        const statsDiv = document.getElementById('singleDeductionStats');
+        if (statsDiv) {
+            let baseText = `Accuracy: -0.1×${s_01_count}, -0.3×${s_03_count}`;
+            if (s_restart_count > 0) {
+                baseText += `, -0.6×${s_restart_count}`;
+            }
+            statsDiv.innerText = baseText;
+        }
+    }
+
+    function singleAccChange(num){
+        if (Math.abs(num - (-0.1)) < 0.01) {
+            s_01_count++;
+        } else if (Math.abs(num - (-0.3)) < 0.01) {
+            s_03_count++;
+        } else if (Math.abs(num - 0.1) < 0.01) {
+            if (s_01_count > 0) s_01_count--;
+        } else if (Math.abs(num - 0.3) < 0.01) {
+            if (s_03_count > 0) s_03_count--;
+        }
+        s_acc = Number((s_acc + num).toFixed(1));
+        if(s_acc < 0) s_acc = 0;
+        if(s_acc > 4.0) s_acc = 4.0;
+        document.getElementById('singleAccScore').innerText = s_acc.toFixed(1);
+        updateSingleDeductionStats();
+    }
+    
+    function singleAccRestart(){
+        s_restart_count++;
+        s_acc = 3.4;
+        s_01_count = 0;
+        s_03_count = 0;
+        document.getElementById('singleAccScore').innerText = "3.4";
+        updateSingleDeductionStats();
+    }
+
+    function toSingleExp() {
+        s_step = 2;
+        switchSingleStep();
+    }
+    
+    function toSingleTotal(){
+        let total = Number((s_acc + s_exp).toFixed(1));
+        document.getElementById('singleTotalScore').innerText = total.toFixed(2);
+        document.getElementById('singleTotalDetails').innerHTML = `Accuracy: ${s_acc.toFixed(1)} | Presentation: ${s_exp.toFixed(1)}`;
+        updateSingleDeductionStats();
+        s_step = 3;
+        switchSingleStep();
+    }
+    
+    function singleCalcSlider(idx){
+        let slider = document.getElementById(`s${idx+1}`);
+        if (!slider) return;
+        let val = slider.value / 10;
+        s_slide[idx] = Number(val.toFixed(1));
+        s_exp = Number(s_slide.reduce((a,b)=>a+b,0).toFixed(1));
+        let valSpan = document.getElementById(`v${idx+1}`);
+        if (valSpan) valSpan.innerText = val.toFixed(1);
+        let expScoreSpan = document.getElementById('singleExpScore');
+        if (expScoreSpan) expScoreSpan.innerText = s_exp.toFixed(1);
+    }
+    function singleSliderChange(idx, num){
+        let v = Number((s_slide[idx] + num).toFixed(1));
+        if(v < 0) v = 0;
+        if(v > MAX_ITEM) v = MAX_ITEM;
+        s_slide[idx] = v;
+        let slider = document.getElementById(`s${idx+1}`);
+        if (slider) slider.value = v * 10;
+        let valSpan = document.getElementById(`v${idx+1}`);
+        if (valSpan) valSpan.innerText = v.toFixed(1);
+        s_exp = Number(s_slide.reduce((a,b)=>a+b,0).toFixed(1));
+        let expScoreSpan = document.getElementById('singleExpScore');
+        if (expScoreSpan) expScoreSpan.innerText = s_exp.toFixed(1);
+    }
+    function resetSingleAll(){
+        s_acc = 4.0;
+        s_slide = [0,0,0];
+        s_exp = 0.0;
+        s_01_count = 0;
+        s_03_count = 0;
+        s_restart_count = 0;
+        s_step = 1;
+        document.getElementById('singleAccScore').innerText = "4.0";
+        for(let i=0;i<3;i++){
+            let slider = document.getElementById(`s${i+1}`);
+            if (slider) slider.value = 0;
+            let valSpan = document.getElementById(`v${i+1}`);
+            if (valSpan) valSpan.innerText = "0.0";
+        }
+        document.getElementById('singleExpScore').innerText = "0.0";
+        updateSingleDeductionStats();
+        switchSingleStep();
+    }
+
+    // 蓝方逻辑
+    let b_acc = 4.0, b_slide = [0,0,0], b_exp = 0.0;
+    let blue_01_count = 0, blue_03_count = 0;
+
+    function blueAccChange(num){
+        if (Math.abs(num - (-0.1)) < 0.01) {
+            blue_01_count++;
+        } else if (Math.abs(num - (-0.3)) < 0.01) {
+            blue_03_count++;
+        } else if (Math.abs(num - 0.1) < 0.01) {
+            if (blue_01_count > 0) blue_01_count--;
+        } else if (Math.abs(num - 0.3) < 0.01) {
+            if (blue_03_count > 0) blue_03_count--;
+        }
+        b_acc = Number((b_acc + num).toFixed(1));
+        if(b_acc < 0) b_acc = 0;
+        if(b_acc > 4.0) b_acc = 4.0;
+        document.getElementById('blueAccScore').innerText = b_acc.toFixed(1);
+        updateBlueDeductionStats();
+    }
+    function blueCalcSlider(idx){
+        let val = document.getElementById(`b_s${idx+1}`).value / 10;
+        b_slide[idx] = Number(val.toFixed(1));
+        b_exp = Number(b_slide.reduce((a,b)=>a+b,0).toFixed(1));
+        document.getElementById(`b_v${idx+1}`).innerText = val.toFixed(1);
+        document.getElementById('blueExpScore').innerText = b_exp.toFixed(1);
+    }
+    function blueSliderChange(idx, num){
+        let v = Number((b_slide[idx] + num).toFixed(1));
+        if(v < 0) v = 0; if(v > MAX_ITEM) v = MAX_ITEM;
+        b_slide[idx] = v;
+        document.getElementById(`b_s${idx+1}`).value = v * 10;
+        document.getElementById(`b_v${idx+1}`).innerText = v.toFixed(1);
+        b_exp = Number(b_slide.reduce((a,b)=>a+b,0).toFixed(1));
+        document.getElementById('blueExpScore').innerText = b_exp.toFixed(1);
+    }
+    function resetBlueAll(){
+        b_acc = 4.0; b_slide = [0,0,0]; b_exp = 0.0;
+        blue_01_count = 0; blue_03_count = 0;
+        document.getElementById('blueAccScore').innerText = "4.0";
+        for(let i=0;i<3;i++){ document.getElementById(`b_s${i+1}`).value = 0; document.getElementById(`b_v${i+1}`).innerText = "0.0"; }
+        document.getElementById('blueExpScore').innerText = "0.0";
+        document.getElementById('blueTotalScore').classList.remove('winner-effect');
+        updateBlueDeductionStats();
+    }
+
+    // 红方逻辑
+    let r_acc = 4.0, r_slide = [0,0,0], r_exp = 0.0;
+    let red_01_count = 0, red_03_count = 0;
+
+    function redAccChange(num){
+        if (Math.abs(num - (-0.1)) < 0.01) {
+            red_01_count++;
+        } else if (Math.abs(num - (-0.3)) < 0.01) {
+            red_03_count++;
+        } else if (Math.abs(num - 0.1) < 0.01) {
+            if (red_01_count > 0) red_01_count--;
+        } else if (Math.abs(num - 0.3) < 0.01) {
+            if (red_03_count > 0) red_03_count--;
+        }
+        r_acc = Number((r_acc + num).toFixed(1));
+        if(r_acc < 0) r_acc = 0;
+        if(r_acc > 4.0) r_acc = 4.0;
+        document.getElementById('redAccScore').innerText = r_acc.toFixed(1);
+        updateRedDeductionStats();
+    }
+    function redCalcSlider(idx){
+        let val = document.getElementById(`r_s${idx+1}`).value / 10;
+        r_slide[idx] = Number(val.toFixed(1));
+        r_exp = Number(r_slide.reduce((a,b)=>a+b,0).toFixed(1));
+        document.getElementById(`r_v${idx+1}`).innerText = val.toFixed(1);
+        document.getElementById('redExpScore').innerText = r_exp.toFixed(1);
+    }
+    function redSliderChange(idx, num){
+        let v = Number((r_slide[idx] + num).toFixed(1));
+        if(v < 0) v = 0; if(v > MAX_ITEM) v = MAX_ITEM;
+        r_slide[idx] = v;
+        document.getElementById(`r_s${idx+1}`).value = v * 10;
+        document.getElementById(`r_v${idx+1}`).innerText = v.toFixed(1);
+        r_exp = Number(r_slide.reduce((a,b)=>a+b,0).toFixed(1));
+        document.getElementById('redExpScore').innerText = r_exp.toFixed(1);
+    }
+    function resetRedAll(){
+        r_acc = 4.0; r_slide = [0,0,0]; r_exp = 0.0;
+        red_01_count = 0; red_03_count = 0;
+        document.getElementById('redAccScore').innerText = "4.0";
+        for(let i=0;i<3;i++){ document.getElementById(`r_s${i+1}`).value = 0; document.getElementById(`r_v${i+1}`).innerText = "0.0"; }
+        document.getElementById('redExpScore').innerText = "0.0";
+        document.getElementById('redTotalScore').classList.remove('winner-effect');
+        updateRedDeductionStats();
+    }
+</script>
+</body>
+</html>
